@@ -1,0 +1,10 @@
+*.retry
+group_vars/all/main.yaml
+hosts
+*secrets*
+
+
+Session.vim
+.mypy_cache
+__pycache__
+Pipfile.lock

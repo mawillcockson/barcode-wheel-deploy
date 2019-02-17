@@ -1,0 +1,5 @@
+# Base jail should not be run
+# It is for copying only, and pkg and freebsd-update both support specifying a jail so that those commands can be run (through ansible) from the host system
+base {
+  path = "/{{ jail_path}}/{{ base_jail }}";
+}

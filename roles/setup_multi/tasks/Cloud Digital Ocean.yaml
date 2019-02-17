@@ -1,0 +1,91 @@
+---
+# NOTE: May need to add ssh key mangling and searching, as this doesn't seem to fail if the key has the same name, but a different value
+# I switched my Yubikey, and it didn't fail, but I couldn't log in to the instance until I deleted my old key, and made a new one with the same name and new key material
+- name: Ensure all SSH keys listed in group_vars/local/main.yaml in the list my_ssh_keys are on Digital Ocean
+  digital_ocean:
+    api_token: "{{ cloud_api.token }}"
+    command: ssh
+    name: "{{ item.name }}"
+    ssh_pub_key: "{{ item.public_key }}"
+    state: present
+  loop: "{{ my_ssh_keys }}"
+  register: uploaded_ssh_key
+
+- name: Grab the first uploaded SSH key's Digital Ocean Key ID
+  set_fact:
+    ssh_key_id: "{{ uploaded_ssh_key.results[0].ssh_key.id }}"
+
+- name: Get list of droplets on the Digital Ocean account the api key has access to
+  uri:
+    url: "https://api.digitalocean.com/v2/droplets"
+    headers: { Authorization: "Bearer {{ cloud_api.token }}" }
+    method: GET
+    return_content: yes
+    timeout: 5
+    follow_redirects: safe
+    validate_certs: yes
+  register: digital_ocean_droplets
+
+- name: Are any droplets present on Digital Ocean?
+  set_fact:
+    any_matching_droplets: "{{ digital_ocean_droplets.json.droplets | length > 0 }}"
+
+- name: Find a droplet with matching domain name
+  set_fact:
+    droplet_id: "{{ item.id }}"
+  when:
+    - any_matching_droplets
+    - item.name is match('multi\.willcockson\.us')
+  loop: "{{ digital_ocean_droplets.json.droplets }}"
+
+- name: Get information about the droplet
+  uri:
+    url: "https://api.digitalocean.com/v2/droplets/{{ droplet_id }}"
+    headers: { Authorization: "Bearer {{ cloud_api.token }}" }
+    method: GET
+    return_content: yes
+    timeout: 5
+    follow_redirects: safe
+    validate_certs: yes
+  register: my_droplet
+  when: droplet_id is defined
+
+- name: Extract required information from the droplet returned by Digital Ocean API
+  set_fact:
+    my_droplet: "{{ my_droplet.json.droplet }}"
+  when: droplet_id is defined
+
+- name: Create a droplet if it needs to be created
+  digital_ocean:
+    api_token: "{{ cloud_api.token }}"
+    backups_enabled: no
+    command: droplet
+    image_id: "{{ cloud_provider.image_ids[ os | first ] }}"
+    # NOTE: Size dynamically based on which services are being run
+    size_id: s-1vcpu-1gb
+    # NOTE: Let user pick region
+    region_id: sfo2
+    ssh_key_ids: "{{ ssh_key_id }}"
+    name: "{{ groups['multi'][0] }}"
+    unique_name: yes
+    ipv6: yes
+    private_networking: no
+    wait: yes
+    state: active
+  register: created_droplet
+  when: droplet_id is undefined
+
+- name: If droplet was just created, set droplet_id
+  set_fact:
+    droplet_id: "{{ created_droplet.droplet.id }}"
+    my_droplet: "{{ created_droplet.droplet }}"
+  when:
+    - droplet_id is undefined
+
+- name: Set facts about the droplet
+  set_fact:
+    instance_ipv4: "{{ my_droplet.networks.v4.0.ip_address }}"
+    instance_ipv6: "{{ my_droplet.networks.v6.0.ip_address }}"
+  when:
+    - not (created_droplet is failed)
+...

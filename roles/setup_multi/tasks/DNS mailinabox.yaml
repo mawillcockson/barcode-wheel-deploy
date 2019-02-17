@@ -1,0 +1,33 @@
+---
+# Manually interacting with the mailinabox.email/ dns api is probably not the best way to go about this
+- name: "Setup dns record so {{ groups['multi'][0] }} points to the server on Digital Ocean (IPv4)"
+  uri:
+    url: "{{ dns_provider.url | regex_replace('HOSTNAME', groups['multi'][0]) | regex_replace('RRTYPE', 'A') }}"
+    body: "{{ instance_ipv4 }}"
+    user: "{{ dns_provider.username }}"
+    password: "{{ dns_provider.password }}"
+    method: PUT
+    return_content: yes
+    timeout: 5
+    follow_redirects: safe
+    validate_certs: yes
+  register: updated_dns_v4
+
+- name: "Setup dns record so {{ groups['multi'][0] }} points to the server on Digital Ocean (IPv6)"
+  uri:
+    url: "{{ dns_provider.url | regex_replace('HOSTNAME', groups['multi'][0]) | regex_replace('RRTYPE', 'AAAA') }}"
+    body: "{{ instance_ipv6 }}"
+    user: "{{ dns_provider.username }}"
+    password: "{{ dns_provider.password }}"
+    method: PUT
+    return_content: yes
+    timeout: 5
+    follow_redirects: safe
+    validate_certs: yes
+  register: updated_dns_v6
+
+- name: Was DNS successfully updated?
+  fail:
+    msg: "The IP address of the server we just created was not successfully added to the DNS server. Please add both IPv4 '{{ instance_ipv4 }}' and IPv6 '[{{ instance_ipv6 }}]' to the DNS server manually, and then continue with the 'multi' role"
+  when: (updated_dns_v4 is failed) or (updated_dns_v4 is skipped) or (updated_dns_v6 is failed) or (updated_dns_v6 is skipped)
+...

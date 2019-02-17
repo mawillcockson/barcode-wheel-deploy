@@ -1,0 +1,52 @@
+---
+cloud_api:
+  # Move the provider you would like to use to the top of the list
+  provider:
+    - Digital Ocean
+    - Vultr
+    - Scaleway
+# Please go to your provider's website, create an account, and find the section for generating an API token, and copy it onto the end of this line below
+  token:
+
+dns_api:
+  # Move the provider you would like to use to the top of the list
+  provider:
+    - mailinabox
+    - name.com
+    - gandi
+    - Digital Ocean
+    - Vultr
+# Please go to your provider's website, create an account, and find the section for generating an API token, and copy it onto the end of this line below
+  token: 
+
+# Replace name@example.com on the following line with an outside email address (e.g. GMail, Yahoo, etc.). This is used for TLS certificate configuration from LetsEncrypt, which means you agree to the policy at
+# <>
+email: "name@example.com"
+
+my_ssh_keys:
+  - name: "SSH key's name"
+    public_key: "Either paste complete ssh public key here in quotes as one line, or put the following line in double quotes, where path/to/publickey.pub is the absolute path to your public key:{{ lookup('file', '/path/to/your/public_key.pub') }}"
+
+services:
+  - website
+  - vpn
+  - chevereto
+
+website:
+# Must have a default site that is displayed when, for instance, someone were to type the IP of the instance into their browser. A good suggestion is to make this a blank HTML page (as suggested here <>), unless you want them to see your main site. By default, if left empty, an empty page will be put into the default site
+  - default: ""
+# Inside the "", put the file path or url to the git repository that holds your Hugo site. If a URL, the repository must be publicly cloneable without authentication (i.e. git@github.com:me/mysite.git would not work, because the instance won't have a GitHub account). Do not put trailing slashes on file paths to directories
+  - my_other_site: "/home/me/my_projects/my_hugo_site"
+# An alias is a domain name that you own, and that is hosted by the selected DNS provider, or has delegated authority to the DNS providers nameservers (i.e. has NS records that point to Digital Ocean's nameservers <>, if using Digital Ocean). When someone types any alias into a browser, all will display the same website.
+    aliases:
+      - "my.website.example.com"
+      - "ihaveawebsite.example.com"
+
+# Choose the operating system you want this instance to run
+os:
+  - FreeBSD
+  - OpenBSD
+  - Debian
+  - Fedora
+  - ArchLinux
+...

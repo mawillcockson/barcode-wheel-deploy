@@ -1,0 +1,42 @@
+---
+- name: Get list of droplets on the Digital Ocean account the api key has access to
+  uri:
+    url: "https://api.digitalocean.com/v2/droplets"
+    headers: { Authorization: "Bearer {{ cloud_api.token }}" }
+    method: GET
+    return_content: yes
+    timeout: 5
+    follow_redirects: safe
+    validate_certs: yes
+  register: digital_ocean_droplets
+  when: droplet_id is undefined
+
+- name: Are any droplets present on Digital Ocean?
+  set_fact:
+    any_matching_droplets: "{{ digital_ocean_droplets.json.droplets | length > 0 }}"
+  when:
+    - droplet_id is undefined
+
+- name: Find all droplets with matching domain name
+  set_fact:
+    droplet_ids: "{{ droplet_ids | default([]) | union([item.id]) }}"
+  when:
+    - digital_ocean_droplets is defined
+    - any_matching_droplets
+    - item.name is match('multi\.willcockson\.us')
+  loop: "{{ digital_ocean_droplets.json.droplets }}"
+
+- name: If a droplet_id is already set, put it in a list
+  set_fact:
+    droplet_ids: "{{ [droplet_id] }}"
+  when: droplet_id is defined
+
+- name: "Destroy all {{ groups['multi'][0] }} on Digital Ocean"
+  digital_ocean:
+    command: droplet
+    api_token: "{{ digital_ocean_token }}"
+    droplet_id: "{{ item }}"
+    state: absent
+  loop: "{{ droplet_ids }}"
+  when: droplet_id is defined
+...

@@ -1,0 +1,365 @@
+---
+### Override IP ansible will SSH to in order to work around DNS propogation delay
+- name: Find actual IP of instance as setup in setup_multi role
+  import_tasks: find_ip.yaml
+
+- name: Make sure ansible connects to the correct host
+  set_fact:
+      ansible_host: "{{ instance_ipv4 }}"
+
+### Set python binary path for different operating systems
+- name: Make sure Ansible finds Python
+  set_fact:
+    ansible_python_interpreter: "/usr/local/bin/python3.7"
+
+### Install packages required by Ansible ###
+- name: Setup pkg
+  raw: "pkg update && pkg upgrade -y"
+  register: pkg_output
+  changed_when: "'(0 candidates)' not in pkg_output.stdout"
+
+- name: Install python
+  raw: "pkg install -y python37"
+  register: pkg_output
+  failed_when: "'Message from python37' not in pkg_output.stdout and 'The most recent version of packages are already installed' not in pkg_output.stdout"
+  changed_when: "'The most recent version of packages are already installed' not in pkg_output.stdout"
+
+- name: Gather facts now that Python is installed
+  setup:
+    gather_subset: all
+
+### Base system configuration ###
+- name: Make accessing instance network information easier
+  block:
+    - name: Find public interface name
+      set_fact:
+        multi_public_interface: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['interface'] }}"
+    
+    - name: Set ansible_[public interface] for next sectino
+      set_fact:
+        ansible_interface: "ansible_{{ multi_public_interface }}"
+
+    - name: Find instance IP addresses
+      set_fact:
+        multi_networks:
+          v4:
+            public: "{{ hostvars[inventory_hostname]['ansible_default_ipv4'] }}"
+            # NOTE: Do we need to know about the private networks? Maybe to make sure VPN network doesn't clash...
+            #private: "{{ hostvars[inventory_hostname][ansible_interface]['ipv4'] | selectattr('address', 'match', '^10(\\.\\d{1,3}){3}$') | first }}"
+          v6:
+            public: "{{ hostvars[inventory_hostname][ansible_interface]['ipv6'] | selectattr('scope', 'undefined') | first }}"
+            private: "{{ ansible_facts[ansible_interface]['ipv6'] | selectattr('scope', 'defined') | first }}"
+
+    - name: Set IPv6 gateway
+      block:
+        - name: Create temporary variable
+          set_fact:
+            temp_dict:
+              v6:
+                public:
+                  # NOTE: Is there a way to get this from FreeBSD as opposed to having to change it based on the hosting provider?
+                  gateway: "{{ ansible_facts.ansible_default_ipv6.gateway }}"
+
+        - name: Combine temporary variable with original dict
+          set_fact:
+            multi_networks: "{{ multi_networks | combine(temp_dict, recursive=True) }}"
+
+# NOTE: It'd be much better if we generated our own authorized_keys file either
+# on the local machine and sent it to the server, or generated it on the server
+# Also, this is a user account that needs to be removed
+# Is it possible to find if there's any additional accounts created by the
+# cloud provider that aren't needed?
+- name: Find if there's any rogue authorized_keys files
+  find:
+    paths:
+      - "/home/freebsd/.ssh" # Digital Ocean default cloud_init creates this account
+      - "/root/.ssh"
+    depth: 1
+    file_type: file
+    follow: no
+    recurse: yes
+    patterns: 'authorized_keys*'
+  register: authorized_keys_files
+
+# Create the backup file first, otherwise sshd defaults to password authentication, which is blocked, and so then we're locked out
+- name: Create authorized_keys file, always clobbering the old one safely, so that if connectivity is lost, we won't be locked out
+  block:
+    - name: Find existing authorized_keys file
+      find:
+        paths:
+          - "/etc/ssh"
+        depth: 1
+        file_type: file
+        follow: no
+        recurse: yes
+        patterns: 'authorized_keys*'
+      register: proper_authorized_keys_files
+
+    - name: Create backup authorized_keys file
+      copy:
+        src: /etc/ssh/authorized_keys
+        dest: /etc/ssh/authorized_keys.bak
+        remote_src: yes
+      when: proper_authorized_keys_files.matched > 0
+
+    - name: Create authorized_keys file from my_ssh_keys group_vars variable
+      blockinfile:
+        path: /etc/ssh/authorized_keys
+        create: yes
+        block: "{{ item.public_key }}"
+        state: present
+      loop: "{{ my_ssh_keys }}"
+
+    - name: Remove backup authorized_keys file
+      file:
+        path: /etc/ssh/authorized_keys.bak
+        state: absent
+
+- name: Generate sshd_config
+  template:
+    src: sshd_config.j2
+    dest: /etc/ssh/sshd_config
+    validate: '/usr/sbin/sshd -t -f %s'
+    #notify: restart sshd # We'll restart it in a couple tasks
+
+# Now that the sshd_config has been validated, the /root/.ssh/authorized_keys file can be removed, as it's no longer used
+# It's not removed until after validation, in case validatino doesn't pass and the old sshd_config is still in place expecting the authorized_keys file to be in /root/.ssh/
+# If it wasn't there, we'd be locked out of the system
+
+- name: Remove old authorized_keys files
+  file:
+    name: "{{ item.path }}"
+    state: absent
+  loop: "{{ authorized_keys_files.files }}"
+
+### Jail presetup ###
+- name: Gather jail names
+  block:
+    - name: Create temporary directory for processing jail names on target machine
+      tempfile:
+        state: directory
+      register: temp_dir
+
+    - name: Copy jail.conf fragments to remote host
+      copy:
+        src: ../../multi_services/templates/jail.conf.d/
+        dest: "{{ temp_dir.path }}"
+
+    - name: Gather jail.conf fragment file names
+      find:
+        file_type: file
+        follow: yes
+        paths: "{{ temp_dir.path }}"
+        pattern: "*"
+        recurse: no
+      register: jail_conf_fragments
+
+# All jail names are derived from these fragment filenames, except for * which includes the configuration common to all jails.
+# The first one must be 00_*.j2, and the second must be 01_{{ name of base jail }}.j2 which will be the template jail from which
+# all other jails will be created.
+# The filename format must be respected, otherwise things will work funny (i.e. you jail will be included in jail.conf,
+# but no dataset will be created), and the leading number determine the order in which the jail configurations will be placed
+# within jail.conf and the jail_list= rc.conf variable, so if one jail depends on another, the leading numbers must result in
+# that jail's name appearing after the jail(s) it depends upon
+#
+# The jail_names list also does not include the * name, as it's not a jail, just a placeholder in the jail.conf so that
+# variable names can be used, with their values set in each jail, as opposed to having everything in the outermost namespace,
+# outside of any {}
+    - name: Find file fragment names
+      set_fact:
+        jail_fragments: "{{ jail_conf_fragments.files | map(attribute='path') | map('basename') | sort | list }}"
+
+    - name: "Process fragment file names from 00_*.j2, 01_base.j2 into *, base"
+      set_fact:
+        jail_names: "{{ jail_fragments | map('regex_search', '(?<=\\d{2}_).+(?=\\.j2)') | reject('eq', '*') | list }}"
+
+    - name: Set base jail name for convenience
+      set_fact:
+        base_jail: "{{ jail_names | first }}"
+        jail_names_without_base: "{{ jail_names | reject('eq', (jail_names | first)) | list }}"
+
+    - name: Remove temporary directory
+      file:
+        path: "{{ temp_dir.path }}"
+        state: absent
+
+- name: Set some variables to make generating and enacting the changes to the rc.conf less verbose
+  set_fact:
+    multi_domainname: "{{ inventory_hostname | regex_replace('^(?P<host>\\w+)\\.(?P<domainname>.+)$', '\\g<domainname>') }}"
+    cloned_interfaces:
+      # NOTE: Needs to create a list of names ['lo1', 'lo2', ...] with one for each jail
+      - lo1 # To help separate jail networking in non-VNET FreeBSD versions
+      - lo2
+
+- name: Generate rc.conf
+  template:
+    src: rc.conf.j2
+    dest: /etc/rc.conf
+  when: ansible_os_family == "FreeBSD"
+
+- name: Apply changes to rc.conf to this session
+  block:
+    - name: Set host name
+      hostname:
+        name: "{{ inventory_hostname }}"
+
+    - name: Restart services
+      service:
+        name: "{{ item }}"
+        enabled: yes
+        state: restarted
+      with_items:
+        - ntpd
+        # powerd may not start on Digital Ocean
+        - sshd # Restarting ssh may disconnect things
+        - zfs
+
+    - name: Stop sendmail
+      service:
+        name: sendmail
+        state: stopped
+        # No 'enabled: ' setting because the generated rc.conf includes the better 'sendmail_enable="NONE"'
+
+    - name: "Add {{ multi_public_interface }} to group egress"
+      command: "ifconfig {{ multi_public_interface }} group egress"
+
+    - name: Enable forwarding of IPv4 packets
+      sysctl:
+        name: net.inet.ip.forwarding
+        val: "1"
+        state: present
+        sysctl_set: yes
+        reload: yes
+
+    - name: Enable forwarding of IPv6 packets
+      sysctl:
+        name: net.inet.ip6.forwarding
+        val: "1"
+        state: present
+        sysctl_set: yes
+        reload: yes
+
+    - name: Stop rpcbind
+      service:
+        name: rpcbind
+        enabled: no
+        state: stopped
+
+    # NOTE: Not idempotent
+    #- name: Create cloned_interfaces
+    #  command: "ifconfig {{ item }} create"
+    #  loop: "{{ cloned_interfaces }}"
+    # Firewall is taken care of in its own role
+
+
+### Base jail setup ###
+- name: Setup zfs for jails
+  block:
+    - name: Gather facts about the zfs pool
+      zpool_facts:
+        properties: all
+
+    - name: Record zpool name into fact
+      set_fact:
+        zpool: "{{ ansible_zfs_pools[0]['name'] }}"
+        jail_path: "jails"
+
+    - name: Create a jails dataset in the root directory
+      zfs:
+        name: "{{ zpool }}/{{ jail_path }}"
+        state: present
+        extra_zfs_properties:
+          mountpoint: "/{{ jail_path }}"
+
+    - name: Create a base jail dataset
+      zfs:
+        name: "{{ zpool }}/{{ jail_path }}/{{ base_jail }}"
+        state: present
+        extra_zfs_properties:
+          mountpoint: "/{{ jail_path }}/{{ base_jail }}"
+
+- name: Install unarchivers required by Ansible unarchive module, along with the Mozilla TLS root certificate bundle so OpenSSL can validate https urls
+  package:
+    name:
+      - gtar
+      - unzip
+      - ca_root_nss
+    state: present
+
+- name: Unarchive base.txz into the jail directory
+  unarchive:
+    remote_src: yes
+    creates: "/{{ jail_path }}/{{ base_jail }}/dev/"
+    dest: "/{{ jail_path }}/{{ base_jail }}"
+    src: "https://download.freebsd.org/ftp/releases/{{ ansible_architecture }}/{{ ansible_architecture }}/{{ ansible_distribution_version }}-RELEASE/base.txz"
+
+    # NOTE: This is clobbered each run
+- name: Generate jail.conf that describes all jails
+  block:
+    - name: Create temporary directory for processing jail.conf fragments on target machine
+      tempfile:
+        state: directory
+      register: temp_dir
+
+    - name: Template each file into a directory on the target
+      template:
+        src: "../../multi_services/templates/jail.conf.d/{{ item }}"
+        dest: "{{ temp_dir.path }}"
+      loop: "{{ jail_fragments }}"
+
+    - name: Assemble jail.conf fragments
+      assemble:
+        src: "{{ temp_dir.path }}"
+        remote_src: yes
+        dest: /etc/jail.conf
+        mode: "0600"
+        # NOTE: Any way to validate this generated file?
+
+    - name: Remove temporary directory
+      file:
+        path: "{{ temp_dir.path }}"
+        state: absent
+
+- name: Update base system and packages in base jail
+  block:
+    - name: Do freebsd-update fetch and install for host system
+      command: "freebsd-update --not-running-from-cron fetch install"
+
+    - name: Do freebsd-update for base jail
+      command: 'freebsd-update --not-running-from-cron -b /{{ jail_path }}/{{ base_jail }} fetch install'
+
+      # The jail has to be running first
+      #- name: Upgrade installed packages
+      #- pkgng:
+      #-   autoremove: yes
+      #-   jail: "base"
+      #-   name:
+      #-     - python37
+      #-     - caddy
+
+# Filename format is jail_{{ base_jail }}_{{ filename when installed in destination }}.j2
+- name: Generate rc.conf for base jail
+  template:
+    src: "jail_{{ base_jail }}_rc.conf.j2"
+    dest: "/{{ jail_path }}/{{ base_jail }}/etc/rc.conf"
+    mode: "0644"
+
+- name: Generate resolv.conf for base jail
+  template:
+    src: "jail_{{ base_jail }}_resolv.conf.j2"
+    dest: "/{{ jail_path }}/{{ base_jail }}/etc/resolv.conf"
+    mode: "0644"
+
+- name: Make a snapshot of base
+  zfs:
+    name: "{{ zpool }}/{{ jail_path }}/{{ base_jail }}@{{ base_jail }}-{{ ansible_distribution_version }}"
+    state: present
+
+- name: zfs send base jail dataset to create other jail datasets
+  shell: >
+    zfs send "{{ zpool }}"/"{{ jail_path }}"/"{{ base_jail }}"@"{{ base_jail }}"-"{{ ansible_distribution_version }}" |
+    zfs receive "{{ zpool }}"/"{{ jail_path }}"/"{{ item }}"
+  args:
+    creates: "/{{ jail_path }}/{{ item }}"
+  loop: "{{ jail_names_without_base }}" # Don't want to copy base jail to itself
+...

@@ -1,0 +1,32 @@
+hostname="{{ inventory_hostname }}" # Should be FQDN according to <>
+
+ntpd_enable="YES"
+# powerd may not start on virtual servers
+#powerd_enable="YES"
+dumpdev="NO"
+sendmail_enable="NONE"
+
+cloudinit_enable="YES"
+sshd_enable="YES"
+digitaloceanpre="YES"
+digitalocean="YES"
+zfs_enable="YES"
+
+cloned_interfaces="{{ cloned_interfaces | join(' ') }}"
+defaultrouter="{{ multi_networks.v4.public.gateway }}"
+ifconfig_{{ multi_public_interface }}="inet {{ multi_networks.v4.public.address }} netmask {{ multi_networks.v4.public.netmask }} group egress"
+ifconfig_{{ multi_public_interface }}_ipv6="inet6 {{ multi_networks.v6.public.address }} prefixlen {{ multi_networks.v6.public.prefix }}"
+ipv6_defaultrouter="{{ multi_networks.v6.public.gateway }}"
+ipv6_activate_all_interfaces="YES"
+gateway_enable="YES"
+ipv6_gateway_enable="YES"
+
+jail_enable="YES"
+# NOTE: Update when per-jail configuration is figured out
+jail_list="{{ jail_names_without_base | join(' ') }}"
+
+firewall_enable="YES"
+#firewall_nat_enable="YES"
+firewall_type="open"
+rpcbind_enable="NO"
+inetd_flags="-wW -a {{ multi_networks.v4.public.address }} -C 20"

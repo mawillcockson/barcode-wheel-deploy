@@ -1,0 +1,20 @@
+---
+- name: Setup environment for creating and configuring multi
+  hosts: localhost
+  connection: local
+  gather_facts: no
+
+  roles:
+    - { role: setup_multi, tags: ['setup_multi'] }
+
+- name: Configure already running computer as multi
+  hosts: "{{ groups['multi'][0] }}"
+  user: root
+  gather_facts: no
+
+  roles:
+    - { role: multi, tags: ['multi'] }
+    - { role: firewall, tags: ['firewall'] }
+    - { role: multi_services, tags: ['multi_services'] }
+   #- { role: common, tags: ['common'] }
+...

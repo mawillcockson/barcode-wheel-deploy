@@ -1,0 +1,26 @@
+* {
+  $if = "{{ multi_public_interface }}";
+# cloned_interfaces in rc.conf.j2 should set this so this is available
+  $lo = "lo${ip}";
+
+  exec.start = "/bin/sh /etc/rc";
+  exec.stop = "/bin/sh /etc/rc.shutdown";
+  exec.clean;
+
+  path = "/jails/${name}";
+
+  ip4.addr = "${lo}|127.0.1.${ip}/32";
+  ip4.addr += "${if}|10.0.1.${ip}/24";
+  host.hostname = "${name}";
+  host.domainname = "localdomain";
+
+  allow.mount;
+  devfs_ruleset = "4";
+  allow.mount.devfs;
+  mount.devfs;
+  allow.raw_sockets;
+  allow.socket_af;
+
+  persist;
+
+}

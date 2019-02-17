@@ -1,2 +1,3 @@
 # barcode-wheel-deploy
-Deploys mawillcockson/barcode-wheel
+
+This respository contains a set of Chef playbooks that I use to deploy my [mawillcockson/barcode-wheel](https://github.com/mawillcockson/barcode-wheel) project.

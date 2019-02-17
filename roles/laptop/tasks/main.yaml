@@ -1,0 +1,68 @@
+---
+
+- name: Gather Facts
+  setup:
+
+- name: Update package index and upgrade installed packages
+  package:
+    update_cache: yes
+    upgrade: yes
+
+- name: Install additional packages
+  package:
+      state: present
+      name:
+        - bash
+        - bash_completion
+        - btrfs-progs
+        - ccid
+        - chromium
+        - chrony
+        - espeak
+        - ethtool
+        - exfat-utils
+        - f2fs-tools
+        - firefox
+        - git
+        - gpart
+        - graphicsmagick
+        - htop
+        - jfsutils
+        - keepass
+        - links
+        - lvm2
+        - mesa-vdpau
+        - mplayer
+        - neovim
+        - networkmanager
+        - netowrk-manager-dispatcher-chrony
+        - nilfs-utils
+        - ntfs-3g
+        - opensc
+        - openssh
+        - os-prober
+        - pcsclite
+        - python-pip
+        - reiserfsprogs
+        - rsync
+        - sudo
+        - sysfsutils
+        - systemd-sysvcompat
+        - tar
+        - tlp
+        - tmux
+        - udftools
+        - unzip
+        - usbutils
+        - vlc
+        - wireguard-tools
+        - x86_energy_perf_policy
+        - xclip
+        - xdotool
+        - xfsprogs
+        - xorg-server
+        - xorg-init
+        - xterm
+        - zip
+        - zsh
+        - zsh-completions

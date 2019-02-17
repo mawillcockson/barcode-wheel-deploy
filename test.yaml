@@ -1,0 +1,57 @@
+---
+- name: Test
+  hosts: multi.willcockson.us
+  #connection: local
+  gather_facts: no
+  tasks:
+
+    - name: Switch to localhost and local connection
+      set_fact:
+        ansible_connection: local
+        ansible_host: localhost
+
+    - name: Set FQDN for which to find IP4
+      set_fact:
+        fqdn: multi.willcockson.us
+
+    - name: Test dig lookup
+      command: "drill -o AA a {{ fqdn }}"
+      register: test
+
+    - name: Find IP address
+      block:
+        - name: Find answer
+          set_fact:
+            ip: "{{ test.stdout | regex_search('^'+fqdn+'.\\s*[0-9]+.*?IN.*$', multiline=True) }}"
+
+            # Have to split this up, because if the result of a regex_search is |'d to another regex_search, it balks and claims it was expecting a bytes- or string-like object
+
+        - name: Find IP
+          set_fact:
+            ip: "{{ ip | regex_search('(?<=IN\\sA\\s).*$') }}"
+
+    - name: Debug
+      debug:
+        var: ip
+
+    - name: Fail if no answer found
+      fail:
+        msg: No answer found
+      when: not ip
+
+
+    #
+    #- name: Clone repo
+    #  git:
+    #    accept_hostkey: no # Need to add bitbucket or wherever this repo is coming from public SSH keys
+    #    bare: no
+    #    clone: yes
+    #    depth: 1
+    #    force: no # Don't overwrite files
+    #    recursive: yes
+    #    repo: file:///home/mw/projects/static-site
+    #    dest: ./temp-dir
+    #    version: HEAD
+    #  register: clone
+
+...

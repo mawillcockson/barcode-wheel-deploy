@@ -1,0 +1,50 @@
+---
+- name: Save Ansible variables so we can set them back after changing them
+  set_fact:
+    ansible_host_old: "{{ ansible_host }}"
+    ansible_connection_old: "{{ ansible_connection }}"
+
+- name: Switch to working on localhost with local connection
+  set_fact:
+    ansible_connection: local
+    ansible_host: localhost
+
+- name: Make sure ldns <> is installed
+  command: "which drill"
+  ignore_errors: yes
+  register: drill_test
+
+- name: Install ldns if needed
+  package:
+    name: ldns
+    state: present
+  ignore_errors: yes
+  register: drill_install
+  when: drill_test is failed
+
+- name: Fail if drill not found
+  fail:
+    msg: "The command 'drill' could not be found, and the ldns package that contains it could not be installed"
+  when: drill_install is failed
+
+- name: Lookup authoritative IP using drill
+  # NOTE: Need to support IPv6-only setups
+  command: "drill -o AA a {{ groups['multi'][0] }}"
+  register: drill_answer
+
+- name: Find IP address
+  block:
+    - name: Find answer
+      set_fact:
+        answer_line: "{{ drill_answer.stdout | regex_search('^' + groups['multi'][0] + '.\\s*[0-9]+.*?IN.*$', multiline=True) }}"
+
+        # Have to split this up, because if the result of a regex_search is |'d to another regex_search, it balks and claims it was expecting a bytes- or string-like object
+
+    - name: Find IP
+      set_fact:
+        instance_ipv4: "{{ answer_line | regex_search('(?<=IN\\sA\\s).*$') }}"
+
+- name: Set Ansible variables back to original values
+  set_fact:
+    ansible_connection: "{{ ansible_connection_old }}"
+    ansible_host: "{{ ansible_host_old }}"

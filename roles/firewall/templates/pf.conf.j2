@@ -1,0 +1,49 @@
+# List of ports on which to allow inbound traffic
+inbound_tcp = "{ http, https, domain, ssh }"
+inbound_udp = "{ domain }"
+
+{% if open_tcp_ports %}
+open_tcp_ports = "{ {{ open_tcp_ports | join(', ') }} }"
+{% endif %}
+
+{% if open_udp_ports %}
+open_udp_ports = "{ {{ open_udp_ports | join(', ') }} }"
+{% endif %}
+#
+# Now scrub all traffic
+scrub in all
+
+# Blocks packets appearing on interfaces and in directinos which are logically impossible
+antispoof for egress
+
+# Don't process local loopback traffic
+set skip on lo
+
+# Default to blocking any traffic not matched by any further rules
+block all
+
+# Blocks martian packets in any direction
+martians = "{ 127.0.0.0/8, 192.168.0.0/16, 172.16.0.0/12, \
+              10.0.0.0/8, 169.254.0.0/16, 192.0.2.0/24, \
+              0.0.0.0/8, 240.0.0.0/4 }"
+block drop in quick on egress from $martians to any
+block drop out quick on egress from any to $martians
+
+# Allow all ICMP (ping and IPv6)
+pass proto icmp
+pass proto icmp6
+
+{% if open_tcp_ports %}
+pass in on egress proto tcp to port $open_tcp_ports
+{% endif %}
+
+{% if open_udp_ports %}
+pass in on egress proto udp to port $open_udp_ports
+{% endif %}
+
+# Allow allowed inbound traffic in
+pass in on egress proto tcp to port $inbound_tcp
+pass in on egress proto udp to port $inbound_udp
+
+# Allow all outbound traffic
+pass out all keep state

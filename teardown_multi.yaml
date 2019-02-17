@@ -1,0 +1,9 @@
+---
+- name: Teardown multi
+  hosts: localhost
+  connection: local
+  gather_facts: no
+
+  roles:
+    - { role: teardown_multi, tags: ['teardown_multi'] }
+...

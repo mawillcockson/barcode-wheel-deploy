@@ -1,0 +1,21 @@
+---
+- name: reload pf
+  block:
+    - name: Restart pf
+      service:
+        name: pf
+        state: restarted
+
+    - name: Reload pf configuration
+      command: pfctl -f /etc/pf.conf
+
+- name: restart natd
+  service:
+    name: natd
+    state: restarted
+
+- name: restart ipfw
+  service:
+    name: ipfw
+    state: restarted
+...

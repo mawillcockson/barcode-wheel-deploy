@@ -1,0 +1,20 @@
+---
+- name: Template out missing ones
+  template:
+    src: "{{ item.item.template }}"
+    dest: "{{ item.item.directory }}/{{ item.item.name }}"
+    variable_start_string: "[["
+    variable_end_string: "]]"
+    force: no
+  # If the file isn't found, the returned structure has a list of dictionaries where the key 'files' is an empty list, which evaluates to false. 'rejectattr' rejects object attributes that are boolean evaluated as true. So this filters out any found files
+  
+- name: Issue instructions if needed
+  fail:
+    msg: |
+      "The file {{ item.item.directory }}/{{ item.item.name }} was not found, and is needed, as it should contain information
+      about how the project should be set up that is specific to your use case (e.g. domain names, services to run, etc.).
+      The file has been created in the directory specified, and filled in with values that need to be changed.
+      Parts that include the word 'example' are good candidates requiring customization.
+      Please edit this file with customizations before running the configuration again."
+  when: item.matched <= 0
+...

@@ -1,0 +1,83 @@
+#!/bin/sh
+# This is just a bash script of ipfw commands
+# Flush all lists
+ipfw -q -f flush
+
+# Variables to reduce repitition
+cmd="ipfw -q add"
+skip="skipto 500"
+pif="{{ iface }}"
+ks="keep-state"
+# TCP ports to let through
+good_tcpo="22,37,53,80,443"
+
+# Allow all traffic on loopback
+$cmd 00005 allow all from any to any via lo0
+
+# If a packet is inbound, see if it's got an entry with natd, and divert it if necessary
+$cmd 00099 divert natd ip from any to any in via $pif
+
+# Any packets that are part of an existing stream can be let through
+$cmd 00100 check-state
+
+# Allow most authorized connections, and make sure the return packets match rule 100 to be allowed back in
+$cmd 120 $skip udp from any to any 53 out via $pif $ks
+$cmd 125 $skip tcp from any to any $good_tcpo out via $pif setup $ks
+
+# Allow outbound ICMP
+$cmd 00250 allow icmp from any to any out via $pif $ks
+
+# Allow outbound NTP
+$cmd 00260 allow udp from any to any 123 out via $pif $ks
+
+# Allow any inbound SSH
+$cmd 00280 allow tcp from any to any 22 in via $pif setup $ks
+
+# Deny all other outbound connections
+$cmd 00299 deny all from any to any out via $pif
+
+# Deny all martians in and out on public interface
+$cmd 00300 deny all from 192.168.0.0/16 to any via $pif  # RFC 1918 private IPv4
+$cmd 00301 deny all from 172.16.0.0/12 to any via $pif   # RFC 1918 private IPv4
+$cmd 00302 deny all from 10.0.0.0/8 to any via $pif      # RFC 1918 private IPv4
+$cmd 00303 deny all from 127.0.0.0/8 to any via $pif     # loopback
+$cmd 00304 deny all from 0.0.0.0/8 to any via $pif       # loopback
+$cmd 00305 deny all from 169.254.0.0/16 to any via $pif  # DHCP autoconfiguration
+$cmd 00306 deny all from 192.0.2.0/24 to any via $pif    # Reserved for documentation
+$cmd 00307 deny all from 204.152.64.0/23 to any via $pif # Sun cluster interconnect
+$cmd 00308 deny all from 224.0.0.0/3 to any via $pif     # Class D & E Multicast
+
+# Allow public pings
+$cmd 00315 allow icmp from any to any in via $pif $ks
+
+# Deny ident
+$cmd 00315 deny tcp from any to any 113 in via $pif
+
+# Deny all NetBIOS services
+$cmd 00320 deny tcp from any to any 137 in via $pif
+$cmd 00321 deny tcp from any to any 138 in via $pif
+$cmd 00322 deny tcp from any to any 139 in via $pif
+$cmd 00323 deny tcp from any to any 81 in via $pif
+
+# Deny all fragments
+$cmd 00330 deny tcp from any to any frag in via $pif
+
+# Deny ACK packets that did not match the dynamic rule table
+$cmd 00332 deny tcp from any to any established in via $pif
+
+# Allow outbound HTTP/S connections
+$cmd 00400 allow tcp from any to any 80 in via $pif
+$cmd 00410 allow tcp from any to any 443 in via $pif
+
+# Allow any outbound SSH
+$cmd 00410 allow tcp from any to any 22 in via $pif
+
+# Deny all other incoming connections
+$cmd 00499 deny all from any to any in via $pif
+
+# Allow NAT stuff
+$cmd 00500 divert natd ip from any to any out via $pif # skipto location for outbound stateful rules
+$cmd 00510 allow ip from any to any
+
+# Deny everything else
+$cmd 00999 deny all from any to any

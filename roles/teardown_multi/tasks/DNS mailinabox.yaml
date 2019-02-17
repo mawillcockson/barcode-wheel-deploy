@@ -1,0 +1,38 @@
+---
+# Manually interacting with the mailinabox.email/ dns api is probably not the best way to go about this
+- name: "Remove {{ groups['multi'][0] }} DNS IPv4 records"
+  uri:
+    url: "{{ dns_provider.url | regex_replace('HOSTNAME', groups['multi'][0]) | regex_replace('RRTYPE', 'A') }}"
+    user: "{{ dns_provider.username }}"
+    password: "{{ dns_provider.password }}"
+    method: DELETE
+    return_content: yes
+    timeout: 5
+    follow_redirects: safe
+    validate_certs: yes
+  register: removed_dns_v4
+
+- name: "Remove {{ groups['multi'][0] }} DNS IPv6 records"
+  uri:
+    url: "{{ dns_provider.url | regex_replace('HOSTNAME', groups['multi'][0]) | regex_replace('RRTYPE', 'AAAA') }}"
+    user: "{{ dns_provider.username }}"
+    password: "{{ dns_provider.password }}"
+    method: DELETE
+    return_content: yes
+    timeout: 5
+    follow_redirects: safe
+    validate_certs: yes
+  register: removed_dns_v6
+
+- name: Debug
+  block:
+    - debug:
+        var: removed_dns_v4
+    - debug:
+        var: removed_dns_v6
+
+- name: Was DNS successfully updated?
+  fail:
+    msg: "The IP address of the server we just created was not successfully added to the DNS server. Please add both IPv4 '{{ instance_ipv4 }}' and IPv6 '[{{ instance_ipv6 }}]' to the DNS server manually, and then continue with the 'multi' role"
+  when: (updated_dns_v4 is failed) or (updated_dns_v4 is skipped) or (updated_dns_v6 is failed) or (updated_dns_v6 is skipped)
+...

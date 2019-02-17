@@ -1,0 +1,128 @@
+---
+- name: Find outbound interface name
+  set_fact:
+    iface: "{{ ansible_default_ipv4['interface'] }}"
+
+- name: generate pf.conf
+  template:
+    src: pf.conf.j2
+    dest: /etc/pf.conf
+  when: ansible_os_family == "FreeBSD" and use_pf | default(false)
+
+# NOTE: This will sever the SSH connection :( Can we use the wait_for Ansible module to circumvent this?
+- name: Enable pf
+  service:
+    name: pf
+    enabled: yes
+    notify: reload pf
+  when: ansible_os_family == "FreeBSD" and use_pf | default(false)
+
+- name: generate ipfw.rules
+  template:
+    src: ipfw.rules.j2
+    dest: /etc/ipfw.rules
+  when: ansible_os_family == "FreeBSD" and use_ipfw | default(true)
+
+- name: Generate natd.conf
+  template:
+    src: natd.conf.j2
+    dest: /etc/natd.conf
+  when: ansible_os_family == "FreeBSD" and use_ipfw | default(true)
+
+- name: Enable ipfw and natd
+  block:
+    - name: Enable ipfw
+      service:
+        name: ipfw
+        enabled: yes
+
+    - name: Set firewall open
+      command: 'sysrc firewall_type="open"'
+
+    - name: Set the path to the ipfw.rules file
+      command: 'sysrc firewall_scripts="/etc/ipfw.rules"'
+
+    - name: Let the kernel pass IP packets
+      command: 'sysrc gateway_enable="YES"'
+
+    - name: Set generic outbound interface driver name
+      set_fact:
+        outbound_interface: "{{ iface | regex_search('^\\w+(?=\\d+)') }}"
+
+    - name: Disable TSO for all interfaces, as ipfw and natd fight with this, and txcsum and rxcsum on the outgoing interface just to be safe
+            (Thanks to https://forums.freebsd.org/threads/using-ipfw-to-nat-a-jail-inside-a-vm-slow-network-connectivity-inside-jail.66288/post-391021
+             and https://lists.freebsd.org/pipermail/freebsd-net/2018-January/049530.html)
+      block:
+        - name: Disable TSO on all interfaces
+          sysctl:
+            name: net.inet.tcp.tso
+            value: 0
+            state: present
+            reload: yes
+            sysctl_set: yes
+
+        - name: Disable LRO, TSO, RXCSUM, and TXCSUM on the main network interface for the host
+          command: "ifconfig {{ iface }} -lro -tso -rxcsum -txcsum"
+
+        - name: Enable all these and other changes in /boot/loader.conf.local so they're enacted on boot
+          lineinfile:
+            line: "{{ item }}"
+            state: present
+            insertafter: EOF
+            path: /boot/loader.conf.local
+            create: yes # Digital Ocean creates this file, but not everyone does
+          loop:
+            - net.inet.tcp.tso=0
+            - "hw.{{ outbound_interface }}.csum_disable=1"
+            - "hw.{{ outbound_interface }}.lro_disable=1"
+
+    - name: Enable natd
+      service:
+        name: natd
+        enabled: yes
+
+        #- name: Set the interface natd will listen on
+        #command: 'sysrc natd_interface="{{ ansible_interfaces | reject("in", "lo") | list | first }}"'
+
+    - name: Set natd flags
+      command: 'sysrc natd_flags="-config /etc/natd.conf"'
+      #command: 'sysrc natd_flags="-dynamic -m"' # Does not forward ports, but "just works" for testing
+
+    - name: Set natd interface
+      command: 'sysrc natd_interface="{{ iface }}"'
+      # Does not need to be done if the server is being restarted
+      #notify: restart ipfw # Restarting ipfw also restarts natd in the right order
+
+  when: ansible_os_family == "FreeBSD" and use_ipfw | default(true)
+
+# NOTE: Not enabled
+# Could replace this with DNS API interaction, but this way, this role is not dependant upon knowing which API we're using
+- name: Gather IPv4 addresses of multi group to connect to reboot
+  # This needs a lot of improvement:
+  # Idea is to make requests to the authoritative server, for the most up to date information
+  block:
+    - name: Find an authoritative nameserver
+      set_fact:
+        authoritative_nameserver: "{{ lookup('dig', inventory_hostname+'/NS') }}"
+
+    - name: Debug
+      debug:
+        var: authoritative_nameserver
+
+    - name: Find IPv4 addresses of multi group
+      set_fact:
+        multi_ipv4s: "{{ lookup('dig', inventory_hostname+'/A', '@'+authoritative_nameserver.reply) }}"
+  when: False
+
+- name: Check if firewall is running
+  command: service natd status
+  ignore_errors: yes
+  register: firewall_running
+  when: ansible_os_family == "FreeBSD" and use_ipfw | default(true)
+
+- name: Reboot the server, to make sure the sysctl values are enabled and to start the firewall properly
+  reboot:
+    #host: "{{ multi_ipv4s }}"
+    reboot_timeout: 300
+  when: "'natd is running as pid' not in (firewall_running | default(''))"
+...

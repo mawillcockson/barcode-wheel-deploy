@@ -1,0 +1,106 @@
+---
+- name: Install required webserver, database server, and PHP
+  pkgng:
+    jail: chevereto
+    name:
+      #- mysql80-server
+      - mariadb103-server
+      - caddy
+      - php72
+      - php72-extensions
+      #- php72
+      - ca_root_nss
+    state: present
+
+- name: Make changes to rc.conf in jail
+  command: "jexec chevereto sysrc {{ item }}"
+  loop:
+    - mysql_enable="YES"
+    - php_fpm_enable="YES"
+    - caddy_enable="YES"
+    - caddy_cert_email="matthew+letsencrypt@willcockson.us"
+
+- name: Set variables for following
+  set_fact:
+    jail_path: "{{ hostvars[groups['multi'][0]].jail_path }}"
+
+- name: Setup PHP
+  block:
+    - name: Configure PHP-FPM to listen on Unix domain socket
+      lineinfile:
+        path: /jails/chevereto/usr/local/etc/php-fpm.d/www.conf
+        regexp: "^listen = .*"
+        line: "listen = /var/run/php72-fpm.sock"
+        state: present
+
+    - name: Set the user, group, and persmissions on the fpm socket
+      lineinfile:
+        path: "{{ jail_root_path }}/usr/local/etc/php-fpm.d/www.conf"
+        regexp: ".*{{ item }}$"
+        line: "{{ item }}"
+        state: present
+      loop:
+        - "listen.owner = www"
+        - "listen.group = www"
+        - "listen.mode = 0660"
+
+    - name: Move php.ini-production file into place
+      copy:
+        mode: preserve
+        remote_src: yes
+        src: "{{ jail_root_path }}/usr/local/etc/php.ini-production"
+        dest: "{{ jail_root_path }}/usr/local/etc/php.ini"
+
+    - name: Fill out PHP custom ini file
+      template:
+        src: php_99-custom.ini.j2
+        dest: "{{ jail_root_path }}/usr/local/etc/php/99-custom.ini"
+
+    - name: Start php-fpm service
+      command: "service -j chevereto php-fpm restart"
+
+- name: Create /usr/local/www
+  file:
+    state: directory
+    path: "{{ jail_root_path }}/usr/local/www"
+    mode: "0644"
+    owner: www
+    group: www
+
+- name: Install Caddyfile
+  template:
+    src: Caddyfile
+    dest: "{{ jail_root_path }}/usr/local/www/Caddyfile"
+    mode: "0644"
+    owner: www
+    group: www
+
+- name: Create chevereto directory
+  file:
+    state: directory
+    path: "{{ jail_root_path }}/usr/local/www/chevereto"
+    mode: "0644"
+    owner: www
+    group: www
+
+- name: Install chevereto web installer
+  unarchive:
+    remote_src: yes
+    src: "https://github.com/Chevereto/Chevereto-Free/archive/1.1.1.tar.gz"
+    validate_certs: yes
+    dest: "{{ jail_root_path }}/usr/local/www/chevereto"
+    creates: "{{ jail_root_path }}/usr/local/www/chevereto/index.php"
+    group: www
+    owner: www
+    mode: "0644"
+  register: chevereto_installed
+
+- name: Chevereto archive comes with root Chevereto-Free-version folder
+  copy:
+    src: "{{ jail_root_path }}/usr/local/www/chevereto/Chevereto-Free-1.1.1/"
+    dest: "{{ jail_root_path }}/usr/local/www/chevereto"
+    remote_src: yes
+  when: chevereto_installed is changed
+
+...
+

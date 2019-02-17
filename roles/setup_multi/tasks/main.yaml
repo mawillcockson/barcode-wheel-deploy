@@ -1,0 +1,112 @@
+---
+- name: Set variables for Ansible
+  include_vars:
+    file: "ansible_vars.yaml"
+
+- name: Include variabls for the hosting provider chosen
+  include_vars:
+    file: "Cloud vars {{ cloud_api.provider | first }}.yaml"
+    name: cloud_provider
+
+- name: Include variables for the DNS provider chosen
+  include_vars:
+    file: "DNS vars {{ dns_api.provider | first }}.yaml"
+    name: dns_provider
+
+# Find required files, and fill in with instructions if not found
+- name: Issue instructions if needed
+  pause:
+    prompt: |
+      It looks like the ansible-playbook command was not run from the root folder of this project.
+      Please run the pipenv command from the root folder for the project.
+
+      If you have run the command from the root folder, press Ctl-C, then press C. If you would
+      like to start over, press Ctl-C, then press A.
+
+  # The environment variable PWD does not end with computer-configuration.
+  when: lookup('env', 'PWD') is not search('.*computer-configuration$')
+
+- name: Ensure ./group_vars/all directory exists
+  file:
+    state: directory
+    path: "./group_vars/all"
+
+- name: Define required files
+  set_fact:
+    required_files:
+      - name: 'hosts'
+        directory: '.'
+        template: 'hosts.j2'
+        type: 'file'
+      - name: 'main.yaml'
+        directory: './group_vars/all'
+        template: 'group_vars_all_main.yaml.j2'
+        type: 'file'
+
+- name: Check for required files
+  find:
+    paths: "{{ item.directory }}"
+    patterns: "{{ item.name }}"
+    use_regex: no
+    file_type: "{{ item.type }}"
+    recurse: false
+    follow: yes
+    hidden: yes
+  loop: "{{ required_files }}"
+  register: required_files_found
+
+# The templating is done in the included task so that it only templates out one missing file at a time, so that it doesn't place a file that the user is never notified needs editing by the fail message, otherwise it could place a file that the user doesn't need to know is edited, and then because it's found in the next run, the user never knows they have to edit it.
+
+# If this task is written as a part of this play, then it will loop through all failures at once, potentially hiding ones that scroll off the screen, instead of stopping on each failure. Also, the fail module prints out the full object that is passed to it by loop when it's run in the same task, but not when it's included, which makes for a cleaner output.
+- name: Issue instructions if needed
+  include_tasks: instructions_for_missing_files.yaml
+  loop: "{{ required_files_found.results }}"
+
+# Required by digitalocean module in Ansible, but dopy on PyPI is only compatible with Python 2.x because of 1 bug
+- name: Fix dopy
+  block:
+    - name: "Find dopy/manager.py on the local computer where Ansible is being run from"
+      find:
+        paths: "~"
+        recurse: yes
+        follow: yes
+        patterns: "manager\\.py$" # On different platforms, Ansible finds different path seperators for symlinked directories, hence the `.` for the path seperator
+        use_regex: yes
+      register: manager_files
+
+    - name: Was the file found?
+      fail:
+        msg: >
+          The file dopy/manager.py that is part of the dopy module available on pypi was not found.
+          Either the module is not installed, or it is installed in a place outside the home directory.
+          If it is installed outside the home directory, find the line above that is 'paths: ~',
+          and replace '~' with the path to where dopy is installed.
+      when: manager_files.matched <= 0
+
+# NOTE: Should upstream this, it's very simple
+    - name: "Patch dopy/manager.py for Python 3"
+      blockinfile:
+        backup: yes
+        create: no
+        insertbefore: "^API_ENDPOINT.*$"
+        block: |
+          try:
+              basestring
+          except NameError:
+              basestring = str
+        path: "{{ item.path }}"
+        state: present
+      loop: "{{ manager_files.files | selectattr('path', 'search', '^.*?dopy.manager\\.py$') | list }}"
+
+- name: Create instance
+  include_tasks: "Cloud {{ cloud_api.provider | first }}.yaml"
+
+- name: Setup DNS
+  include_tasks: "DNS {{ dns_api.provider | first }}.yaml"
+
+- name: Wait for SSH to become available on the instance
+  wait_for:
+    host: "{{ instance_ipv4 }}"
+    port: 22
+    timeout: 150
+...

@@ -1,0 +1,7 @@
+dynamic yes
+same_ports yes
+#interface {{ ansible_interfaces | reject('in', 'lo') | list | first }}
+interface {{ iface }}
+
+redirect_port tcp 10.0.1.1:80 80
+redirect_port tcp 10.0.1.1:443 443

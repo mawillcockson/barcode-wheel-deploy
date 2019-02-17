@@ -1,0 +1,19 @@
+---
+- name: Include variabls for the hosting provider chosen
+  include_vars:
+    file: "Cloud vars {{ cloud_api.provider | first }}.yaml"
+    name: cloud_provider
+
+- name: Remove multi instance, and all associated infrastructure
+  include_tasks: "Cloud {{ cloud_api.provider | first }}.yaml"
+  when: teardown | default(false)
+
+- name: Include variables for the DNS provider chosen
+  include_vars:
+    file: "DNS vars {{ dns_api.provider | first }}.yaml"
+    name: dns_provider
+
+- name: Remove DNS records relating to multi
+  include_tasks: "DNS {{ dns_api.provider | first }}.yaml"
+  when: teardown | default(false)
+...

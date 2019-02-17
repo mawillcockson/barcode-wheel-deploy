@@ -1,0 +1,21 @@
+# The following is from the PyCA project's infra: <>
+(tls) {
+  tls {{ email }}
+}
+
+multi.willcockson.us {
+    import tls
+
+    root /usr/local/www/default
+}
+# Chevereto configuration
+#multi.willcockson.us {
+#  import tls
+#
+#  root /usr/local/www/chevereto
+#  fastcgi / /var/run/php72-fpm.sock php
+#
+#  rewrite {
+#    to {path} {path}/ /index.php?{query}
+#  }
+#}

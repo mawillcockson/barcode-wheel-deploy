@@ -1,0 +1,11 @@
+---
+- name: Install packages
+  package:
+    name:
+      - zsh
+      - neovim
+      - tmux
+    state: present
+
+#- name: Install configuration files
+#  skip: true

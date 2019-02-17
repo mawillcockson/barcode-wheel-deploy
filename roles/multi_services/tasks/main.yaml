@@ -1,0 +1,9 @@
+---
+- name: Setup website service
+  import_tasks: caddy.yaml
+  when: "'website' in services"
+
+- name: Setup chevereto service
+  import_tasks: chevereto.yaml
+  when: "'chevereto' in services"
+...

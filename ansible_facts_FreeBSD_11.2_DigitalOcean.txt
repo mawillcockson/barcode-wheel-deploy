@@ -1,0 +1,410 @@
+multi.willcockson.us | SUCCESS => {
+    "ansible_facts": {
+        "ansible_all_ipv4_addresses": [
+            "159.89.128.119",
+            "10.46.0.5",
+            "10.0.1.1",
+            "10.0.1.2"
+        ],
+        "ansible_all_ipv6_addresses": [
+            "fe80::34ab:5ff:fec4:63d1%vtnet0",
+            "2604:a880:2:d0::bcd:1001",
+            "fe80::1%lo1",
+            "fe80::1%lo2"
+        ],
+        "ansible_apparmor": {
+            "status": "disabled"
+        },
+        "ansible_architecture": "amd64",
+        "ansible_bios_date": "12/12/2017",
+        "ansible_bios_version": "20171212",
+        "ansible_date_time": {
+            "date": "2019-01-18",
+            "day": "18",
+            "epoch": "1547846622",
+            "hour": "21",
+            "iso8601": "2019-01-18T21:23:42Z",
+            "iso8601_basic": "20190118T212342564106",
+            "iso8601_basic_short": "20190118T212342",
+            "iso8601_micro": "2019-01-18T21:23:42.564321Z",
+            "minute": "23",
+            "month": "01",
+            "second": "42",
+            "time": "21:23:42",
+            "tz": "UTC",
+            "tz_offset": "+0000",
+            "weekday": "Friday",
+            "weekday_number": "5",
+            "weeknumber": "02",
+            "year": "2019"
+        },
+        "ansible_default_ipv4": {
+            "address": "159.89.128.119",
+            "broadcast": "159.89.143.255",
+            "device": "vtnet0",
+            "flags": [
+                "UP",
+                "BROADCAST",
+                "RUNNING",
+                "SIMPLEX",
+                "MULTICAST"
+            ],
+            "gateway": "159.89.128.1",
+            "interface": "vtnet0",
+            "macaddress": "36:ab:05:c4:63:d1",
+            "media": "Ethernet",
+            "media_select": "10Gbase-T",
+            "media_type": "full-duplex>",
+            "metric": "0",
+            "mtu": "1500",
+            "netmask": "255.255.240.0",
+            "network": "159.89.128.0",
+            "options": [
+                "PERFORMNUD",
+                "AUTO_LINKLOCAL"
+            ],
+            "status": "active",
+            "type": "ether"
+        },
+        "ansible_default_ipv6": {
+            "address": "fe80::34ab:5ff:fec4:63d1%vtnet0",
+            "device": "vtnet0",
+            "flags": [
+                "UP",
+                "BROADCAST",
+                "RUNNING",
+                "SIMPLEX",
+                "MULTICAST"
+            ],
+            "gateway": "2604:a880:2:d0::1",
+            "interface": "vtnet0",
+            "macaddress": "36:ab:05:c4:63:d1",
+            "media": "Ethernet",
+            "media_select": "10Gbase-T",
+            "media_type": "full-duplex>",
+            "metric": "0",
+            "mtu": "1500",
+            "options": [
+                "PERFORMNUD",
+                "AUTO_LINKLOCAL"
+            ],
+            "prefix": "64",
+            "scope": "0x1",
+            "status": "active",
+            "type": "ether"
+        },
+        "ansible_devices": {},
+        "ansible_distribution": "FreeBSD",
+        "ansible_distribution_major_version": "11",
+        "ansible_distribution_release": "11.2-RELEASE-p8",
+        "ansible_distribution_version": "11.2",
+        "ansible_dns": {
+            "nameservers": [
+                "8.8.8.8"
+            ]
+        },
+        "ansible_domain": "willcockson.us",
+        "ansible_effective_group_id": 0,
+        "ansible_effective_user_id": 0,
+        "ansible_env": {
+            "BLOCKSIZE": "K",
+            "EDITOR": "vi",
+            "GROUP": "wheel",
+            "HOME": "/root",
+            "HOST": "multi.willcockson.us",
+            "HOSTTYPE": "FreeBSD",
+            "LANG": "en_US.UTF-8",
+            "LOGNAME": "root",
+            "MACHTYPE": "x86_64",
+            "MAIL": "/var/mail/root",
+            "OSTYPE": "FreeBSD",
+            "PAGER": "more",
+            "PATH": "/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin:/root/bin",
+            "PWD": "/root",
+            "REMOTEHOST": "2601",
+            "SHELL": "/bin/csh",
+            "SHLVL": "1",
+            "SSH_CLIENT": "2601:2c0:467f:4ad1:8c8:1207:143b:7712 55228 22",
+            "SSH_CONNECTION": "2601:2c0:467f:4ad1:8c8:1207:143b:7712 55228 2604:a880:2:d0::bcd:1001 22",
+            "SSH_TTY": "/dev/pts/0",
+            "TERM": "screen-256color",
+            "USER": "root",
+            "VENDOR": "amd"
+        },
+        "ansible_fips": false,
+        "ansible_form_factor": "Other",
+        "ansible_fqdn": "multi.willcockson.us",
+        "ansible_hostname": "multi",
+        "ansible_interfaces": [
+            "lo0",
+            "lo1",
+            "lo2",
+            "vtnet0"
+        ],
+        "ansible_is_chroot": true,
+        "ansible_iscsi_iqn": "",
+        "ansible_kernel": "11.2-RELEASE-p8",
+        "ansible_lo0": {
+            "device": "lo0",
+            "flags": [
+                "UP",
+                "LOOPBACK",
+                "RUNNING",
+                "MULTICAST"
+            ],
+            "ipv4": [
+                {
+                    "address": "127.0.0.1",
+                    "broadcast": "127.255.255.255",
+                    "netmask": "255.0.0.0",
+                    "network": "127.0.0.0"
+                }
+            ],
+            "ipv6": [
+                {
+                    "address": "::1",
+                    "prefix": "128"
+                },
+                {
+                    "address": "fe80::1%lo0",
+                    "prefix": "64",
+                    "scope": "0x2"
+                }
+            ],
+            "macaddress": "unknown",
+            "metric": "0",
+            "mtu": "16384",
+            "options": [
+                "PERFORMNUD",
+                "AUTO_LINKLOCAL"
+            ],
+            "type": "loopback"
+        },
+        "ansible_lo1": {
+            "device": "lo1",
+            "flags": [
+                "UP",
+                "LOOPBACK",
+                "RUNNING",
+                "MULTICAST"
+            ],
+            "ipv4": [
+                {
+                    "address": "127.0.1.1",
+                    "broadcast": "127.0.1.1",
+                    "netmask": "255.255.255.255",
+                    "network": "127.0.1.1"
+                }
+            ],
+            "ipv6": [
+                {
+                    "address": "fe80::1%lo1",
+                    "prefix": "64",
+                    "scope": "0x3"
+                }
+            ],
+            "macaddress": "unknown",
+            "metric": "0",
+            "mtu": "16384",
+            "options": [
+                "PERFORMNUD",
+                "AUTO_LINKLOCAL"
+            ],
+            "type": "loopback"
+        },
+        "ansible_lo2": {
+            "device": "lo2",
+            "flags": [
+                "UP",
+                "LOOPBACK",
+                "RUNNING",
+                "MULTICAST"
+            ],
+            "ipv4": [
+                {
+                    "address": "127.0.1.2",
+                    "broadcast": "127.0.1.2",
+                    "netmask": "255.255.255.255",
+                    "network": "127.0.1.2"
+                }
+            ],
+            "ipv6": [
+                {
+                    "address": "fe80::1%lo2",
+                    "prefix": "64",
+                    "scope": "0x4"
+                }
+            ],
+            "macaddress": "unknown",
+            "metric": "0",
+            "mtu": "16384",
+            "options": [
+                "PERFORMNUD",
+                "AUTO_LINKLOCAL"
+            ],
+            "type": "loopback"
+        },
+        "ansible_local": {},
+        "ansible_lsb": {},
+        "ansible_machine": "amd64",
+        "ansible_memfree_mb": 574,
+        "ansible_memtotal_mb": 959,
+        "ansible_mounts": [
+            {
+                "device": "/dev/gpt/swap0",
+                "fstype": "swap",
+                "mount": "none",
+                "options": "sw"
+            },
+            {
+                "block_available": 0,
+                "block_size": 512,
+                "block_total": 2,
+                "block_used": 2,
+                "device": "fdesc",
+                "fstype": "fdescfs",
+                "inode_available": 28372,
+                "inode_total": 28378,
+                "inode_used": 6,
+                "mount": "/dev/fd",
+                "options": "rw",
+                "size_available": 0,
+                "size_total": 1024
+            },
+            {
+                "block_available": 36041944,
+                "block_size": 131072,
+                "block_total": 41673872,
+                "block_used": 5631928,
+                "device": "proc",
+                "fstype": "procfs",
+                "inode_available": 36041944,
+                "inode_total": 36159124,
+                "inode_used": 117180,
+                "mount": "/proc",
+                "options": "rw,noauto",
+                "size_available": 18453475328,
+                "size_total": 21337022464
+            }
+        ],
+        "ansible_nodename": "multi.willcockson.us",
+        "ansible_os_family": "FreeBSD",
+        "ansible_pkg_mgr": "pkgng",
+        "ansible_processor": [
+            "Intel(R) Xeon(R) CPU E5-2650 v4 @ 2.20GHz (2200.03-MHz K8-class CPU)"
+        ],
+        "ansible_processor_count": "1",
+        "ansible_product_name": "Droplet",
+        "ansible_product_serial": "129189614",
+        "ansible_product_uuid": "74751a13-e9a5-4afd-863f-0ed7acc2c0fd",
+        "ansible_product_version": "20171212",
+        "ansible_python": {
+            "executable": "/usr/local/bin/python3.7",
+            "has_sslcontext": true,
+            "type": "cpython",
+            "version": {
+                "major": 3,
+                "micro": 2,
+                "minor": 7,
+                "releaselevel": "final",
+                "serial": 0
+            },
+            "version_info": [
+                3,
+                7,
+                2,
+                "final",
+                0
+            ]
+        },
+        "ansible_python_version": "3.7.2",
+        "ansible_real_group_id": 0,
+        "ansible_real_user_id": 0,
+        "ansible_selinux": {
+            "status": "Missing selinux Python library"
+        },
+        "ansible_selinux_python_present": false,
+        "ansible_service_mgr": "bsdinit",
+        "ansible_ssh_host_key_dsa_public": "AAAAB3NzaC1kc3MAAACBAOzAW5omcWQ3OQiCcXeMtMm8wuMt/a/pVXUQ3JrVgxH6PsbofrI/TqQKeanhIzLebjcE8J9KAZRgj4vS0myplRmhZgRDceNKRipaK1h/rSryIcUF8QILeeS1E32qCP6eb/8MZns8znzzGsKi/gquxOMA9gsAJaQRwXeUczgxPkGvAAAAFQCCvMvyL9m0Xj0LSXVopQXrHzyfEQAAAIA0iMmNzPW9ACoSMS9fEF5c9OCCoDMq+Zp29KVpQ4LALdSKyiqN279vBCNLPfSPi89PfwvQCImhNS9L7dB/ri7ymleue//05eeubMnEzN9GJz1dyKYdQvusBEp+2HNjcLlUVOVkFpuU20y12reAQtpLkERCwBBreIO7VeW5Ri4YSgAAAIEA7DTa4UrckK81GnoEcAV8XhToHcGR30qRPTwnDMc57kFdO01zI+q6naWhL2mqNZJnQi22pbs2zfyRwVPpVTfXF3x4NoiLPc6+zGeBajDpdM4TZ320RxM+YjAXOONljMs9QwbOzi2gVaZq/xFqbfZmTmZYSLL4wVDX+2deofOQUxI=",
+        "ansible_ssh_host_key_ecdsa_public": "AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBNeRfQSRHELPMKe1QrxR558Y6d1abrfWqR+6wIuN6348i3CvK6MDcUQqoTKmhRQMkAUd6e77kPYJYPqW4Ofq99I=",
+        "ansible_ssh_host_key_ed25519_public": "AAAAC3NzaC1lZDI1NTE5AAAAIEos3MLphlQdJZEA8m8vUuHuMpinwZMm/ImhJ0YG8efJ",
+        "ansible_ssh_host_key_rsa_public": "AAAAB3NzaC1yc2EAAAADAQABAAABAQDFR5T2TkNien/QnlrJxN8nkFVotobBEqJ97aoj082vZsxiKf+LLISRSXyEL5s4r++XLZhWVizPLSKqtZD1NEyJZUGnh6GO5UVHEkqTsanp7Mg+a6b/kxYu+pFWLihnO9qCyuDFll8CD/Su3n0czqccBHjY8+hwA3t1qqwmHre5TB2J1jQk8LEcBT8KHkGY9u07l67+HcRXmn4a0eN7xXFh+WsOk+NVkY8+vvTIvJEDKKetBEKU73Y+xymH8nkUM2xhhcs7JqntR7CdqQ/QQJv2GAoKm8/WHdlcoZJIriqkspRuBPG2+U3MlLwOFAEyBHExCAf3SV9RkVJHgc02Rb/J",
+        "ansible_swapfree_mb": 2048,
+        "ansible_swaptotal_mb": 2048,
+        "ansible_system": "FreeBSD",
+        "ansible_system_vendor": "DigitalOcean",
+        "ansible_user_dir": "/root",
+        "ansible_user_gecos": "Charlie &",
+        "ansible_user_gid": 0,
+        "ansible_user_id": "root",
+        "ansible_user_shell": "/bin/csh",
+        "ansible_user_uid": 0,
+        "ansible_userspace_bits": "64",
+        "ansible_virtualization_role": "",
+        "ansible_virtualization_type": "",
+        "ansible_vtnet0": {
+            "device": "vtnet0",
+            "flags": [
+                "UP",
+                "BROADCAST",
+                "RUNNING",
+                "SIMPLEX",
+                "MULTICAST"
+            ],
+            "ipv4": [
+                {
+                    "address": "159.89.128.119",
+                    "broadcast": "159.89.143.255",
+                    "netmask": "255.255.240.0",
+                    "network": "159.89.128.0"
+                },
+                {
+                    "address": "10.46.0.5",
+                    "broadcast": "10.46.255.255",
+                    "netmask": "255.255.0.0",
+                    "network": "10.46.0.0"
+                },
+                {
+                    "address": "10.0.1.1",
+                    "broadcast": "10.0.1.255",
+                    "netmask": "255.255.255.0",
+                    "network": "10.0.1.0"
+                },
+                {
+                    "address": "10.0.1.2",
+                    "broadcast": "10.0.1.255",
+                    "netmask": "255.255.255.0",
+                    "network": "10.0.1.0"
+                }
+            ],
+            "ipv6": [
+                {
+                    "address": "fe80::34ab:5ff:fec4:63d1%vtnet0",
+                    "prefix": "64",
+                    "scope": "0x1"
+                },
+                {
+                    "address": "2604:a880:2:d0::bcd:1001",
+                    "prefix": "64"
+                }
+            ],
+            "macaddress": "36:ab:05:c4:63:d1",
+            "media": "Ethernet",
+            "media_select": "10Gbase-T",
+            "media_type": "full-duplex>",
+            "metric": "0",
+            "mtu": "1500",
+            "options": [
+                "PERFORMNUD",
+                "AUTO_LINKLOCAL"
+            ],
+            "status": "active",
+            "type": "ether"
+        },
+        "gather_subset": [
+            "all"
+        ],
+        "module_setup": true
+    },
+    "changed": false
+}

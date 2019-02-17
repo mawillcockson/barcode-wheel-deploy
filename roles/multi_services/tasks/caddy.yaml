@@ -1,0 +1,46 @@
+---
+- name: Install Caddy Webserver
+  pkgng:
+    jail: caddy
+    name:
+      - caddy
+    state: present
+
+- name: Create /usr/local/www
+  file:
+    state: directory
+    path: "{{ jail_path }}/usr/local/www"
+    mode: "0644"
+    owner: www
+    group: www
+
+- name: Create default site
+  block:
+    - name: Create default site folder
+      file:
+        state: directory
+        path: "{{ jail_path }}/caddy/usr/local/www/default"
+        mode: "0644"
+        owner: www
+        group: www
+
+    - name: Copy default site
+      git:
+        repo: "file://{{ website.default.path }}"
+        version: HEAD
+        dest: "temp-dir"
+        bare: no
+        clone: yes
+        depth: 1
+        recursive: yes # To clone in submodules (e.g. included themes repositories for Hugo sites)
+        force: no # Don't overwrite files
+        accept_hostkey: no # Need to add bitbucket or wherever this repo is coming from public SSH keys to .ssh/known_hosts
+
+- name: Install Caddyfile
+  template:
+    src: Caddyfile
+    dest: "{{ jail_root_path }}/usr/local/www/Caddyfile"
+    mode: "0644"
+    owner: www
+    group: www
+...
